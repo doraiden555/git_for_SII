@@ -1,0 +1,604 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%2345678901234567890123456789012345678901234567890123456789012345678901234567890
+%        1         2         3         4         5         6         7         8
+
+%\documentclass[letterpaper, 10 pt, conference]{ieeeconf}  % Comment this line out if you need a4paper
+
+\documentclass[a4paper, 10pt, conference]{ieeeconf}      % Use this line for a4 paper
+
+\IEEEoverridecommandlockouts                              % This command is only needed if 
+                                                          % you want to use the \thanks command
+
+\overrideIEEEmargins                                      % Needed to meet printer requirements.
+
+%In case you encounter the following error:
+%Error 1010 The PDF file may be corrupt (unable to open PDF file) OR
+%Error 1000 An error occurred while parsing a contents stream. Unable to analyze the PDF file.
+%This is a known problem with pdfLaTeX conversion filter. The file cannot be opened with acrobat reader
+%Please use one of the alternatives below to circumvent this error by uncommenting one or the other
+%\pdfobjcompresslevel=0
+%\pdfminorversion=4
+
+% See the \addtolength command later in the file to balance the column lengths
+% on the last page of the document
+
+\usepackage[dvipdfmx]{graphicx}
+\usepackage{graphicx}
+\usepackage{bm}  %add for using bm command
+
+
+% The following packages can be found on http:\\www.ctan.org
+\usepackage{graphics} % for pdf, bitmapped graphics files
+\usepackage{epsfig} % for postscript graphics files
+\usepackage{mathptmx} % assumes new font selection scheme installed
+\usepackage{times} % assumes new font selection scheme installed
+\usepackage{amsmath} % assumes amsmath package installed
+\usepackage{amssymb}  % assumes amsmath package installed
+
+
+
+\title{\LARGE \bf   A Positioning System and Position Control System of a Quad-Rotor Applying Kalman Filter to a UWB Module and an IMU}
+
+
+\author{Shota Nakamura$^{1}$, Yoshiyuki Higashi$^{2}$, Arata Masuda$^{3}$ and Nanako Miura$^{4}$% <-this % stops a space
+%\thanks{*This work was not supported by any organization}% <-this % stops a space
+\thanks{$^{1}$Shota Nakamura, Division of Mechanodesign, Kyoto Institute of Technology, Kyoto 606-8585
+        {\tt\small m8623117@edu.kit.ac.jp}}%
+\thanks{$^{2}$Yoshiyuki Higashi, Faculty of Mechanical Engineering, Kyoto Institute of Technology, Kyoto 606-8585
+        {\tt\small higashi@kit.ac.jp}}%
+\thanks{$^{3}$Arata Masuda, Faculty of Mechanical Engineering, Kyoto Institute of Technology, Kyoto 606-8585
+        {\tt\small masuda@kit.ac.jp}}%
+\thanks{$^{4}$Nanako Miura, Faculty of Mechanical Engineering, Kyoto Institute of Technology, Kyoto 606-8585
+        {\tt\small miura-n@kit.ac.jp}}%
+}
+
+
+\begin{document}
+
+
+
+\maketitle
+\thispagestyle{empty}
+\pagestyle{empty}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{abstract}
+
+In this paper, the method of controlling the position of the quad-rotor was shown aiming structure inspection. The data obtained from an ultra-wide band (UWB) module capable of measuring a distance, an inertial measurement unit (IMU), and a distance sensor were fused and passed through a Kalman filter to estimate three-dimensional coordinates. All calculation of the position coordinates was performed in the on-board computer of the quad-rotor, and the computer from the outside gave only the start command of position control. In order to verify the position estimation accuracy and the position control performance, we carried out the position hold hovering experiment at one point and experiment to move multiple points. The possibility of the position estimation and the position control using the UWB module and the IMU was shown.
+
+\end{abstract}
+
+\vspace{-2mm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{INTRODUCTION}
+
+In Japan's current social infrastructure, the progress of aging is a serious problem. Among them, especially in the case of bridges, those with a length of more than 15 m were present at 400,000 bridges in 2013. Among them, the percentage of those 50 years after construction accounts for 18\%\cite{c1}. As these aging bridges are expected to increase further, it is an urgent task to inspect them properly. However, local governments that manage these lack the labor cost required for inspection, the cost of equipment, and inspectors. Furthermore, Japan will have a declining birthrate and an aging society in the future, and more financial resources and human resources will be lacking. 
+
+
+Therefore, there is a need for development of an inspection robot that reduces labor cost and simplifies inspection methods. There are two ways to approach the inspection points. First, it is a way to approach from the ground. As shown in \cite{c2}, there is an inspection robot equipped with magnets at the end of the wheels, and it can travel to the inspection points through the metal beams and floors. However, there are problems. When the robot goes to the points, all roads need to be connected without gaps, and there must be no obstacles. Second is to approach from the sky. If the robot can fly to the points, it can avoid obstacles unlike the ground-based robot, and the route need not to be continuous. Therefore, in this research, we aimed to develop a method that can inspect structures using a quad-rotor. In previous studies, the quad-rotor equipped with the magnet, which is called EPM (Electro-Permanent Magnet) and can control magnetization and separation, and with the movable arm was developed. It can stick to the steel frames and inspect the back side of the steel frames with the arm\cite{c13}. However, there are also some challenges in using UAV for inspection.
+
+The UAV can avoid obstacles, however it requires the skill of maneuver. Also, if the UAV gets into the other side of the structure, it becomes extremely difficult to maneuver as it will not be visible to the pilot. Therefore, there is methods of semi automatic or fully automatic position control of a UAV using a position estimation system such as GPS\cite{c3}\cite{c4}\cite{c5}. However, positioning methods using GPS can not receive radio waves if the UAV goes under the structures. There are also camera-based positioning methods such as SLAM\cite{c6}, however expensive and heavy cameras need to be loaded on the UAV, or it is necessary to use an external computer to perform heavy calculations. Previous research has described the method of positioning the quad-rotor referenced in this paper\cite{c7}. However, in that research, it was not achieved to control the position of the quad-rotor based on the estimated position.
+
+
+Therefore, in this research, the data obtained from the UWB module which can measure the range and the IMU mounted on the quad-rotor are fused. And the position estimation method is shown by applying them to a Kalman filter. A method is also proposed to control the position of the quad-rotor even in non-GPS environments. 
+
+From the next chapter, we first describe the method of estimating the position in a non-GPS environment and then describe the method of position control using that estimated coordinate.
+Then, the accuracy of the position estimation and the performance of the position control are verified by the some experiments. Finally, the conclusion is stated.
+
+\vspace{-2mm}
+
+\section{THE NUMERICAL MODEL OF THE QUAD-ROTOR}
+\subsection{Coordinate System and Rotation Matrix}
+
+The positioning method of the quad-rotor shown in this chapter is based on the method in the previous study\cite{c7}. Fig. \ref{quad_rotor} shows the coordinate system of the quad-rotor. The first coordinate system is the reference frame (r-frame). The r-frame is an earth-fixed inertial frame. The second coordinate system is the body frame (b-frame). The b-frame is a body-fixed frame whose origin $o^b$ is at the center of gravity of the quad-rotor. The absolute position of the quad-rotor is defined by $\bm{p_r}=[x,y,z]^T$ and the attitude of the quad-rotor is defined by three Euler angles, $\bm{\Theta}= [\phi, \theta, \psi]^T $. In order to translate vector from b-frame to r-frame, the orthogonal rotation matrix is used (\ref{R}).
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[clip,width=6.0cm]{./fig/quad_rotor.png}
+    \caption{Coordinate system of the quad-rotor}
+    \label{quad_rotor}
+  \end{center}
+\end{figure}
+
+\vspace{-7mm}
+
+
+
+\begin{eqnarray}
+\label{R}
+%\textbf{R}=
+\bm{R}=
+\left[
+\begin{array}{ccc}
+%c\theta c\psi & s\theta c\psi s\phi - s\psi c\phi & s\theta c\psi c\phi + s\psi s\phi \\
+%c\theta s\psi & s\theta s\psi s\phi + c\psi c\phi & s\theta s\psi c\phi - c\psi s\phi \\
+%-s\theta & c\theta s\phi & c\theta c\phi \\
+c\theta c\psi & c\theta s\psi & -s\theta\\
+s\phi s\theta c \psi & s\phi s \theta s\psi + c\phi c\psi & s\phi c\theta\\
+c \phi s\theta c\psi & c\phi s\theta s\psi - s\phi c\psi & c\phi c \theta\\
+\end{array}
+\right]_,
+\end{eqnarray}
+
+\noindent where $s$ represents sin, $c$ represents cos. Applying the rotation matrix $\bm{R}$, the accelerations on the r-frame $\bm{a_r}$ are:
+
+\begin{eqnarray}
+\bm{a_r}= \frac{d}{dt}\bm{v_r} = \bm{R} \bm{a_b} - \bm{g_r},
+\end{eqnarray}
+
+\noindent where $\bm{g_r} = [0,0,-g]^T$ and $g$ is the gravity acceleration and $\bm{a_b}=[a_{bx},a_{by},a_{bz}]^T$ is the accelerations on the b-frame.	The relation between Euler angles and the angular velocity $\bm{\omega}= [p,q,r]^T$ is:
+
+\begin{eqnarray}
+\frac{d}{dt}\bm{\Theta} = \bm{W} \bm{\omega},
+\end{eqnarray}
+
+\noindent where
+
+\begin{eqnarray}
+\bm{W}=
+\left[
+\begin{array}{ccc}
+1 & \sin\phi \tan\theta & \cos\phi \tan\theta  \\
+0 & \cos\phi & -\sin\phi \\
+0 & \sin\phi \sec\theta & \cos\phi \sec\theta \\
+\end{array}
+\right]_.
+\end{eqnarray}
+
+\subsection{Inertial Measurement Unit (IMU)}
+Assuming that the quad-rotor fly at low speed,  $\bm{a_r}$ can be ignored. By transforming (2), $\bm{a_b}$ is:
+
+\begin{eqnarray}
+\bm{a_b}=\bm{R} \bm{g_r}= 
+\left[
+\begin{array}{ccc}
+g\sin\theta  \\
+-g\cos\theta \sin \phi \\
+-g\cos\theta \cos\phi \\
+\end{array}
+\right]_.
+\end{eqnarray}
+
+\noindent Equation (5) expresses the relationship between $\bm{a_b}$ and Euler angle.
+
+
+
+\subsection{Ultra Wide Band (UWB)}
+UWB is a wireless system capable of high-speed communication by spreading power over a wide bandwidth. The frequency band to be used is 3.1 GHz to 10.6 GHz, and the bandwidth is 7.5 GHz, which is wider than several hundreds kHz of the conventional radio and 20 MHz of Wi-Fi. Due to the wide bandwidth, it has high ranging accuracy on the order of several 10 cm\cite{c8}. Fig. \ref{UWB_ranging} shows ranging protocol of the UWB module. There are three messages, Poll, Response, and Final, exchanged between the quad-rotor and the anchors to get the correct distance. It is calculated based on the quad-rotor ($T_{RP}$,$T_{SR}$, $T_{RF}$) and the anchor ($T_{SP}$,$T_{RR}$,$T_{SF}$) timestamps as shown in Fig. 3. With these timestamps, the time taken by radio wave communication, $ToF$ is: 
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[clip,width=4.0cm]{./fig/UWB_ranging.png}
+    \caption{Ranging protocol of the UWB module}
+    \label{UWB_ranging}
+  \end{center}
+\end{figure}
+
+
+\vspace{-2zh}
+
+\begin{eqnarray}
+%\begin{split}
+ToF = &\frac{1}{4}((T_{SP}-T_{RR})-(T_{SR}-T_{RP})\\
+&+(T_{RF}-T_{SR})-(T_{SF}-T_{RR})).
+%\end{split}
+\end{eqnarray}
+
+\noindent The distance between the quad-rotor and the anchor, $d$ is obtained by multiplying $ToF$ by the speed of light $c$.
+
+\begin{eqnarray}
+d = ToF \times c.
+\end{eqnarray}
+
+As mentioned in \cite{c9}, although UWB distance measurement is accurate even near reflectors such as walls, in outdoor environments where structures are dense or in narrow indoor environments, radio waves are reflected by obstacles, and multiple paths occur. The following experiment is an experimental result when an outlier occurs due to multi path. The UWB of one tag was placed on the floor, the four anchors were moved from 1 m to 5 m by 1 m, and the distances between UWBs were measured. Here, there is an error of several tens of centimeters between the distance measured by UWB and the actual distance, therefore this error was corrected in advance by calibration. The results shown in the Fig. \ref{UWB_out} and Fig. \ref{UWB_out_zoom} were obtained. 
+
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[clip,width=7.5cm]{./fig/UWB_out.png}
+    \caption{Ranging result when outliers occur}
+    \label{UWB_out}
+  \end{center}
+\end{figure}
+
+
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[clip,width=7.5cm]{./fig/UWB_out_zoom.png}
+    \caption{Ranging result when outliers occur (enlarged image above)}
+    \label{UWB_out_zoom}
+  \end{center}
+\end{figure}
+
+\vspace{-5mm}
+
+It can be seen that although distances were measured only at a maximum distance of 5 m, distances exceeding 100 m and distances with negative values occur. The outliers due to this multi path were excluded by filtering by the program.  In this filtering method, measured data is stored temporarily in a buffer, and if there is a change above the threshold when the next data arrives, that value is ignored. Fig. \ref{UWB_cali} shows the results of those that passed this filtering process in the same experiment.
+
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[clip,width=7.5cm]{./fig/UWB_cali.png}
+    \caption{Ranging results that passed through the filter}
+    \label{UWB_cali}
+  \end{center}
+\end{figure}
+
+
+
+ It is shown that if no outliers occur due to multi path, the distance measurement performance of UWB is high although the measured values ​​are somewhat different depending on the difference of anchors.
+
+
+\vspace{0.1in}
+Next, the method of estimating the position of the quad-rotor will be shown. Here, when the coordinates of the anchors of the four UWB modules are known, the distances $d$ between the respective anchors and the tag are respectively obtained by the following equations. 
+
+\begin{eqnarray}
+\left[
+\begin{array}{cccc}
+d_1  \\
+d_2 \\
+d_3 \\
+d_4 \\
+\end{array}
+\right]
+= 
+\left[
+\begin{array}{ccc}
+\sqrt{(x-x_1)^2+(y-y_1)^2+(z-z_1)^2}  \\
+\sqrt{(x-x_2)^2+(y-y_2)^2+(z-z_2)^2}  \\
+\sqrt{(x-x_3)^2+(y-y_3)^2+(z-z_3)^2}  \\
+\sqrt{(x-x_4)^2+(y-y_4)^2+(z-z_4)^2}  \\
+\end{array}
+\right]
+\end{eqnarray}
+
+\noindent Solving this equation for the absolute coordinates $\bm{p_r}=(x,y,z)^T$ makes it possible to determine the position from the distances between the UWD anchors and tag on the quad-rotor,  $d_1$, $d_2$, $d_3$ and $d_4$.
+
+%%%%%%%%%%%%%%%%%%%%
+
+
+
+\subsection{Construction of Process Model}
+The velocity of the quad-rotor is defined as $\bm{v_r}=[v_x, v_y, v_z]^T$. The relationship between the absolute coordinates $\bm{p_r}=[x,y,z]^T$ and the velocity $\bm{v_r}=[v_x, v_y, v_z]^T$ is expressed as follows:
+
+\begin{eqnarray}
+\frac{d}{dt} \bm{p_r} = \bm{v_r}
+\end{eqnarray}
+
+\noindent We define the state vector as $\bm{x}=[\Theta ,\bm{p_r}, \bm{v_r}]^T$; the state space is derived as
+
+\begin{eqnarray}
+\frac{d}{dt} \bm{x}(t) =\bm{f}(\bm {x} (t)),
+\end{eqnarray}
+
+\noindent The matrix $f(\bm {x}(t))$ in this equation are defined as
+
+\begin{eqnarray}
+\bm{f} (\bm{x}(t))=
+\left[
+\begin{array}{ccc}
+\bm{W}\bm{\omega} \\
+\bm{v_r} \\
+\bm{Ra_b} - \bm{g_r}\\
+\end{array}
+\right]_.
+\end{eqnarray}
+
+
+
+\noindent where $\bm{x}(t)$ is the state value after $t$ steps and $\Delta t$ is the sampling time. The following equation is obtained by discretizing this equation using the Euler method. Considering $\bm{f_t} (\bm{x}(t)) = \bm {x}(t)  + \bm{f}(\bm{x}(t))\Delta t$ and $\bm{w}_t = \bm{w}  \Delta t $ the discrete time space equation is derived as:
+
+\vspace{-1zh}
+
+\begin{eqnarray}
+\bm{x}(t+1) = \bm{f_t}(\bm {x}(t) ) + \bm{w_t}.
+\end{eqnarray}
+
+\noindent The measurement equation is obtained from (5)(6)(9).
+
+
+\vspace{-1zh}
+
+\begin{eqnarray}
+\bm {y}(t)=\bm {h}_t(\bm{x}(t)) + \bm{v_t},
+\end{eqnarray}
+
+\noindent where $\bm {y}(t) = [a_{bx},a_{by},a_{bz},d_h,d_1,d_2,d_3,d_4]^T$ is output values obtained from each sensor and $\bm{v_t}$ is the observation noise. Here $d_h$ represents output of distance sensor. The matrix $\bm {h_t} (\bm{x} (t))$ in this equation are defined as
+
+\vspace{-1zh}
+
+
+\begin{eqnarray}
+\bm{h_t}(\bm {x}(t))
+= 
+\left[
+\begin{array}{cccccccc}
+g\sin\theta  \\
+-g\cos\theta \sin\phi \\
+-g\cos\theta \cos\phi \\
+z \\
+\sqrt{(x-x_1)^2+(y-y_1)^2+(z-z_1)^2}  \\
+\sqrt{(x-x_2)^2+(y-y_2)^2+(z-z_2)^2}  \\
+\sqrt{(x-x_3)^2+(y-y_3)^2+(z-z_3)^2}  \\
+\sqrt{(x-x_4)^2+(y-y_4)^2+(z-z_4)^2}  \\
+\end{array}
+\right]_.
+\end{eqnarray}
+
+From the above, the discrete process model of the system composed of the state equation of (11) and the observation equation of (15) is derived. At the next section, we will show  how to estimate the position by applying the extended Kalman filter to this process model.
+
+\vspace{-1zh}
+
+\subsection{System Implementation}
+Developed quad-rotor is shown in Fig. \ref{Quad_rotor}. The hardware design is shown in Fig. \ref{device}. The quad-rotor is equipped with Tag, which is the mobile station side of the UWB module, and processes data with the Arduino Pro Mini. The NAVIO2 is equipped with various 9-axis sensors and pressure sensors, and is used as a sensor board. In addition, the value of the distance sensor is also used to improve the accuracy of the height estimation. The flight controller (Pixracer) is responsible for attitude control of the quad-rotor. All calculations such as the position estimate and the target angle are performed on the Linux board (Raspberry Pi), and the PWM command value is finally sent to the flight controller. The detailed system relationship diagram is shown in Fig. \ref{system}.
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[clip,width=5.0cm]{./fig/quad.png}
+    \caption{Quad-rotor equipped with various sensors, flight controller, and UWB module}
+    \label{Quad_rotor}
+  \end{center}
+\end{figure}
+
+
+
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[clip,width=5.0cm]{./fig/device.png}
+    \caption{Hardware design}
+    \label{device}
+  \end{center}
+\end{figure}
+
+
+
+
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[clip,width=7.0cm]{./fig/system.png}
+    \caption{System core design}
+    \label{system}
+  \end{center}
+\end{figure}
+
+
+
+\section{Sensor fusion algorithm using Extend Kalman Filter (EKF)}
+
+
+The Kalman filter is a kind of infinite impulse response filter for estimating or controlling the state of a dynamic system using observation values including errors. The Kalman filter is used to estimate the time-varying quantity, e.g. the position and velocity of an object, from observations including discrete errors. It is widely used in the field of engineering such as radar and computer vision. For example, in car navigation system, it is applied to integrate erroneous information from a built-in accelerometer or a satellite to estimate the location of a car that changes from moment to moment. The Kalman filter can estimate the position of the target now, in the future, and in the past, utilizing the rules governing the temporal change of the target. Next, the extended Kalman filter is explained. Extended Kalman filter is a method of linearizing nonlinear system at each time using Taylor series expansion, and adapting time-varying Kalman filter at each time.
+
+
+
+ $\bm{f}(\cdot)$, $\bm{h}(\cdot)$ are the nonlinear function from the nonlinear system. Jacobian can be used for the linearization like below:
+
+\begin{eqnarray}
+&\left.\bm{A}(t)=\frac{\partial \bm{f}(\bm{x})}{\partial \bm{x}}\right|_{\bm{x}=\hat{\bm{x}}(t)}\\
+&\left.\bm{C}^T(t)=\frac{\partial \bm{h}(\bm{x})}{\partial \bm{x}}\right|_{\bm{x}=\hat{\bm{x}}^{-}(t)}
+\end{eqnarray}
+
+Then, the estimated value is updated using the following equations. In addition, updating of estimated values is performed through two processes of prediction step and filtering step.
+
+
+\noindent 
+
+%\begin{eqnarray}
+\begin{align}
+&\hat{\bm{x}}^{-}(t)=\bm{f}(\hat{\bm{x}}(t-1))\\
+&\bm{P}^{-}(t)=\bm{A}(t-1)\bm{P}(t-1)\bm{A}^T(t-1)+\bm{B}\bm{Q}\bm{B}^{T}\\
+&\hat{\bm{x}}(t)=\hat{\bm{x}}^{-}(t)+\bm{g}(t)(\bm{y}(t)-\bm{h}(\hat{\bm{x}}^{-}(t)))\\
+&\bm{P}(t)=(\bm{I}-\bm{G}(t)\bm{C}^{T}(t))\bm{P}^{-}(t)\\
+&\bm{G}(t)=\bm{P}^{-}(t)\bm{C}^{T}(\bm{C}\bm{P}^{-}(t)\bm{C}^{T}+\bm{R})^{-1}
+%\end{eqnarray}
+\end{align}
+
+In the prediction step, using the estimated value $\hat{\textbf{x}}$ one step ago and the covariance matrix $\bm{P}(t-1)$ of the error, the prior estimated value $\hat{\bm{x}}^{-}(t)$ at the current time and the prior error covariance matrix $\bm{P}^{-}(t)$ are obtained. Then, in the filtering step, the posterior estimated value $\hat{\bm{x}}(t)$ up to the current time and the posterior error covariance matrix $\bm{P}(t)$ are obtained using $\hat{\bm{x}}^{-}(t)$ and $\bm{P}^{-}(t)$.
+
+\section{position controller}
+In this chapter, we explain how to control the position of the quad-rotor based on estimated position. This control method is detailed in \cite{c10}, \cite{c11}and\cite{c12}. First, using the estimated position coordinates and target coordinates, the virtual input is given by the following equation. 
+
+
+\begin{align}
+\label{roll}
+&U_{x} = k_{px}(x_d - \hat{x} ) + k_{dx}(\dot{x}_d - \dot{\hat{x}}_d ) + k_{ix} \int_0^t (x_d - \hat{x} ) d\tau  \\
+&U_{y} = k_{py}(y_d - \hat{y} ) + k_{dy}(\dot{y}_d - \dot{\hat{y}}_d ) + k_{iy} \int_0^t (y_d - \hat{y} ) d\tau  
+\end{align}
+
+As you can see from this, the equation represents the PID controller. Then, from the following two equations, the input values of the desired pitch and roll angles can be obtained using the above.
+
+
+\begin{align}
+&\phi^{des} = \frac{1}{g} (U_x \sin \psi - U_y  \cos \psi)  \\
+&\theta^{des} = \frac{1}{g} (U_x \cos \psi + U_y  \sin \psi).
+\end{align}
+
+
+
+Finally, the pitch and roll angles are converted to PWM signals. And it is possible to control the position of the quad-rotor on the $xy$ plane by overriding these values to the channels of each pitch and roll angle of the transmitter. Also, control in the $z$-axis direction, that is, altitude control, is possible by implementing the PID controller using error in estimated height and desired height, as in control on the $xy$ plane. However, as will be described later, in this research, altitude control was not operated automatically but was steered manually, in order to prevent crashing to the ground or hitting the ceiling if the control did not work well.
+
+
+\section{evaluation}
+In this chapter the possibilities of the system was evaluated. First, the position of the quad-rotor at rest was estimated using the method described above, and compared with the true value. 
+Next, experiments were conducted to control the position of the quad-rotor using the position control method.
+
+\subsection{Verification of position estimation accuracy}
+The following TABLE \ref{anchors} shows the absolute coordinates of each UWB anchors. First, we measured the distance on the floor of the laboratory and marked 4 points. TABLE \ref{target_points} shows the position of the target points. Then, the quad-rotor was placed on that point and kept stationary for 20 seconds, and this was repeated at four points. And the coordinates at that time were estimated. Fig. \ref{position_verification} shows result. 
+
+
+\begin{table}[!t]
+  \caption{Absolute position of anchors}
+  \label{anchors}
+  \centering
+  \begin{tabular}{lccc}
+    \hline
+     & $x$ position [m]& $y$ position [m]& $z$ position [m]\\
+    \hline
+    Anchor1  & -3.50   &  2.00 & 1.82 \\
+    Anchor2  & 3.50   & 2.00& 1.82\\
+    Anchor3  & 3.50 & -2.00& 1.82\\
+    Anchor4  & -3.50 & -2.00& 1.82\\
+    \hline
+  \end{tabular}
+\end{table}
+
+
+
+
+
+
+\begin{table}[!t]
+  \caption{Absolute position of target points}
+  \label{target_points}
+  \centering
+  \begin{tabular}{lcc}
+    \hline
+     & $x$ position [m]& $y$ position [m]\\
+    \hline
+    Point0 (origin)  & 0.00   &  0.00  \\
+    Point1        &  4.00  & 0.00\\
+    Point2        & 4.00   &  -3.00\\
+    Point3        & 0.00   & -3.00\\
+    \hline
+  \end{tabular}
+\end{table}
+
+
+
+
+
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[clip, width=5cm]{./fig/position_verification_2_copy.png}
+    \caption{Coordinates of the quad-rotor at rest estimated using the estimation method}
+    \label{position_verification}
+  \end{center}
+\end{figure}
+
+\vspace{-5mm}
+
+
+
+Because the quad-rotor was moved by hand, it deviated from the rectangular route while moving the points. However, it can be seen that  values close to the coordinates of the measurement point can be estimated while the quad-rotor is stationary. From this, it can be said that the accuracy of the position estimation is sufficiently high.
+
+
+
+
+
+\subsection{Static position hold}
+In this experiment, position hold at one point was performed. The quad-rotor took off manually and switched to automatic operation when it was stable. At first, the quad-rotor was placed on the floor and calibrated at the point as the origin in the $xy$ plane, and control was performed to keep it at the origin. 
+The results are shown in Fig. \ref{position_control_origin}. The standard deviation from the center is 0.083 m, and a maximum deviation 0.406 m. 
+
+%%%
+The standard deviation was less than 0.1m. This degree of deviation is well tolerated in the simple inspection of the structures such as taking the pictures by camera that is mounted on quad-rotor. This is because the angle of view of the camera can be adjusted using the gimbal.
+%%%
+
+
+ There are two possible causes for the control of the quad-rotor to deviate from the set position. First is distance measurement error of the UWB module. The UWB module contains a distance measurement error of several tens of cm. Therefore, it is considered that the ranging error from each of these UWB modules causes an error in position control. 
+Second as shown in the previous chapter, the UWB module estimates the position at about 10 Hz and while the data is not coming from the UWB module, the estimated value is complemented by integrating the IMU data. Therefore, when the quad-rotor is at rest, the integral does not significantly affect the position estimation. However, since the acceleration of vibration from the rotor is applied to the IMU during flight, integrating the acceleration including the error adversely affects the position estimation. These two factors affect the position estimation, and such error has occurred.
+
+
+
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[clip, width=5cm]{./fig/position_control_origin_2_copy.png}
+    \caption{Result of static position hold experiment for 2 minutes}
+    \label{position_control_origin}
+  \end{center}
+\end{figure}
+
+
+
+\vspace{-5mm}
+
+
+
+
+\subsection{Point to point movement}
+In this experiment, in addition to the previous static position hold, control was performed to move three coordinates from point to point. TABLE \ref{Coordinate of way points} shows the coordinate of way points. As in the previous experiment, the point at which the quad-rotor was placed was taken as the origin. The target point was switched by the toggle switch of the transmitter. Fig. \ref{point_to_point} shows the result. The hovering ability at the target point is very similar to the results shown in position hold experiment. The command value was not given during the movement of the point, and only the final target point was commanded. However, the quad-rotor was able to reach the target point without straying from the route significantly. It is considered that the deviation can be further reduced if a target values of coordinates is given finely while moving. 
+
+This accuracy is insufficient to perform more precise work in the future. Therefore an optical flow sensor is required. In the first experiment, the result was that the quad-rotor vibrated from the target point and was displaced. This problem can be avoided by obtaining velocity data from the optical flow sensor. The values ​​obtained from it are the velocity on the $xy$ plane. Therefore, it can be said that the speed control can be combined using this value to solve the problem that the quad-rotor vibrates resulting from the distance measurement error of UWB. Also, by integrating the velocity, the movement distance can be determined. Therefore, the position estimate accuracy can be improved by incorporating this distance into the position estimating. Therefore, incorporating an optical flow sensor is considered to be effective for the second experiment of moving a plurality of target points.
+
+\begin{table}[!t]
+  \caption{Coordinate of way points}
+  \label{Coordinate of way points}
+  \centering
+  \begin{tabular}{lcc}
+    \hline
+     & $x$ position [m]  & $y$ position [m]\\
+    \hline
+    Point0 (origin)   & 0.0     &   0.0     \\
+    Point1             & 1.5     &   -1.0   \\
+    Point2             &  -1.5   &   1.0    \\
+    \hline
+  \end{tabular}
+\end{table}
+
+
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[clip,width=5cm]{./fig/point_to_point_2.png}
+    \caption{Result of moving point to point experiment}
+    \label{point_to_point}
+  \end{center}
+\end{figure}
+
+
+\vspace{-7mm}
+
+
+\section{conclusions}
+In this paper, research was carried out with the aim of developing a robot that can inspect structures even in non-GPS environments. First, we showed how to blend the UWB and IMU data and apply the Kalman filter to estimate the position of the quad-rotor. And we showed the method of controlling the position of the quad-rotor based on the estimated position. 
+
+Next, two experiments were performed to confirm the accuracy of the position estimation and the position control. The first experiment was the static position hold. The result showed the standard deviation from the target point is 0.083 m, and the maximum deviation 0.406 m. The second experiment was to control the quad-rotor and move the three given points in order. Then, the quad-rotor was able to reach the target point without straying from the route significantly while moving between points. 
+
+However, in these experiments, it was found that the quad-rotor vibrated back and forth from the target point, so that the performance was still insufficient to perform precise inspection. Therefore, it is necessary to mount a sensor which is able to estimate the velocity in the $xy$ plane such as an optical flow sensor, and to suppress the vibration in the $xy$ plane by controlling the velocity. In addition, it is also effective when moving to a target point by determining the movement distance by integrating speed data and incorporating it in position estimation. 
+
+
+Furthermore, in this experiment the position was controlled in the small indoor space, but actually in order to inspect the structures, it is necessary to attach UWB anchors around the non-GPS inspection area. First, the UAV, whose position is controlled around the structure where under GPS environment, attaches the anchors to the structures. After that, autonomous flight is performed while estimating the position by the proposed method at the inspection area inside the structure, and inspection is performed. If seamless and autonomous flight is possible in GPS and non-GPS environments, it will be possible to inspect structures in any environment.
+
+\vspace{-2mm}
+
+\begin{thebibliography}{99}
+
+\bibitem{c1}  MLIT, Promotion of infrastructure aging measures, http://www.mlit.go.jp/saiyojoho/manifesto/manifesto7.html (2019/07/20), (in Japanese).
+
+\bibitem{c2} Y. Takada, ``Development of a Bridge Inspection Robot Capable of Traveling on Splicing Parts,'' Inventions 2017, 2, 22; doi:10.3390/inventions2030022.
+
+\bibitem{c13}S. Akahori, Y Higashi, A Masuda, ``Development of an Aerial Inspection Robot with EPM and Camera Arm for Steel Structures,'' IEEE Region 10 Conference (TENCON), 2016.
+
+\bibitem{c3}Microdrones, https://www.microdrones.com/en/ (2019/07/20).
+
+\bibitem{c4}ArduCopter, http://ardupilot.org/copter/index.html (2019/07/20).
+
+\bibitem{c5}PHANTOM SERIES, https://www.dji.com/jp/products/phantom (2019/07/20).
+
+\bibitem{c6} M. Blosch, Stephan Weiss, Davide Scaramuzza, and Roland Siegwart, ``Vision Based MAV Navigation in Unknown and Unstructured Environments,'' Robotics and Automation (ICRA), 2010 IEEE International Conference, 21-28, 1010.
+
+\bibitem{c7}S. Aakahori, Y. Higashi, A. Masuda, ``Position estimation system using UWB, IMU and Distance Sensor for Quad-rotors,'' IEEE Region 10 Conference (TENCON), 2017.
+
+\bibitem{c8}DW1000 Radio IC, https://www.decawave.com/product/dw1000-radio-ic/ (2019/07/26).
+
+\bibitem{c9}K. Guo, Z. Qiu, C. Miao,  A. Zaini, C. Chen, W Meng, L. Xie, ``Ultra-Wideband-Based Localization for Quadcopter Navigation,'' Unmanned Systems, Vol. 4, No. 1 (2016) 23–34.
+
+\bibitem{c10}M. L. Ireland, A. Vargas, D. Anderson, ``A Comparison of Closed-Loop Performance of Multirotor Configurations Using Non-Linear Dynamic Inversion Control,'' Aerospace 2015, 2, pp. 325-352.
+
+\bibitem{c11}Z. Zuo, ``Quadrotor Trajecotry Tracking Control: A PD Control Algorithm,'' 2010 3rd International Conference on Computer and Electrical Engineering (ICCEE 2010), 2010.
+
+\bibitem{c12}D. Mellinger, N. Michael and V. Kumar, ``Trajectory generation and control for precise aggressive maneuvers with quadrotors,'' in Experimental Robotics (Springer, 2014) pp. 361 – 373.
+
+
+
+
+\end{thebibliography}
+
+
+
+
+\end{document}
